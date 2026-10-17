@@ -187,7 +187,9 @@ fn reading_never_writes_to_the_credentials_file() {
 // Keyring source
 // ---------------------------------------------------------------------------
 
-use quota_core::antigravity::local::{parse_keyring_secret, KEYRING_SERVICE, KEYRING_USER};
+use quota_core::antigravity::local::{
+    parse_keyring_secret, KEYRING_SERVICE, KEYRING_USER, WINDOWS_KEYRING_TARGET,
+};
 
 /// Builds an id token shaped like the one the Antigravity CLI stores.
 fn fake_id_token(claims: serde_json::Value) -> String {
@@ -272,4 +274,14 @@ fn the_keyring_coordinates_match_what_the_cli_writes() {
     // These are the lookup keys; a typo means silently finding nothing.
     assert_eq!(KEYRING_SERVICE, "gemini");
     assert_eq!(KEYRING_USER, "antigravity");
+}
+
+#[test]
+fn the_windows_target_uses_go_keyrings_service_colon_user_form() {
+    // go-keyring names Credential Manager entries `service:user`. The Rust
+    // store's own default is `user.service`, which is the name issue #15 missed.
+    assert_eq!(
+        WINDOWS_KEYRING_TARGET,
+        format!("{}:{}", KEYRING_SERVICE, KEYRING_USER)
+    );
 }

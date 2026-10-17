@@ -101,7 +101,13 @@ pub fn read_local_credentials_at(path: &Path) -> Result<LocalClaudeCredentials, 
     let raw = std::fs::read_to_string(path)
         .map_err(|err| LocalCredentialError::Unreadable(err.to_string()))?;
 
-    let parsed: CredentialsFile = serde_json::from_str(&raw)
+    parse_credentials_json(&raw)
+}
+
+/// Parse the credentials JSON. The file and the macOS Keychain item hold the
+/// same payload, so both sources go through here.
+pub fn parse_credentials_json(raw: &str) -> Result<LocalClaudeCredentials, LocalCredentialError> {
+    let parsed: CredentialsFile = serde_json::from_str(raw)
         .map_err(|err| {
             // Use only line/column info from serde error, never the quoted value which could be a token
             let msg = format!(
@@ -130,9 +136,47 @@ pub fn read_local_credentials_at(path: &Path) -> Result<LocalClaudeCredentials, 
     })
 }
 
-/// Convenience wrapper over the default path.
+/// The Keychain service Claude Code stores its login under on macOS, where it
+/// does not write the credentials file at all.
+pub const KEYCHAIN_SERVICE: &str = "Claude Code-credentials";
+
+/// Read the default path, falling back to the Keychain on macOS when the file
+/// is missing.
 pub fn read_local_credentials() -> Result<LocalClaudeCredentials, LocalCredentialError> {
     let path = local_credentials_path()
         .ok_or_else(|| LocalCredentialError::Unreadable("no home directory".to_string()))?;
-    read_local_credentials_at(&path)
+    let file_result = read_local_credentials_at(&path);
+
+    #[cfg(target_os = "macos")]
+    if matches!(file_result, Err(LocalCredentialError::NotFound)) {
+        return read_keychain_credentials();
+    }
+
+    file_result
+}
+
+/// Read the Keychain item through `/usr/bin/security`. Claude Code writes the
+/// item with that same tool, so its access list already allows this read and
+/// no unlock prompt appears. Read-only: nothing is ever stored or deleted.
+#[cfg(target_os = "macos")]
+fn read_keychain_credentials() -> Result<LocalClaudeCredentials, LocalCredentialError> {
+    // `security` exits with 44 when no item matches the service.
+    const ITEM_NOT_FOUND: i32 = 44;
+
+    let output = std::process::Command::new("/usr/bin/security")
+        .args(["find-generic-password", "-s", KEYCHAIN_SERVICE, "-w"])
+        .output()
+        .map_err(|err| LocalCredentialError::Unreadable(err.to_string()))?;
+
+    if !output.status.success() {
+        return Err(match output.status.code() {
+            Some(ITEM_NOT_FOUND) => LocalCredentialError::NotFound,
+            _ => LocalCredentialError::Unreadable(format!("security exited with {}", output.status)),
+        });
+    }
+
+    let raw = String::from_utf8(output.stdout).map_err(|_| {
+        LocalCredentialError::Malformed("Keychain item is not UTF-8".to_string())
+    })?;
+    parse_credentials_json(raw.trim())
 }

@@ -61,7 +61,7 @@ A failed cycle is not fatal. If Herdr is not running, or a provider is signed ou
 
 | Provider | Source |
 |---|---|
-| Claude | `~/.claude/.credentials.json` |
+| Claude | `~/.claude/.credentials.json`, or the macOS Keychain when that file is missing |
 | Codex | `~/.codex/auth.json`, honoring `CODEX_HOME` |
 | Cursor | `~/.config/cursor/auth.json` |
 | Antigravity | OS keyring, falling back to `~/.gemini/oauth_creds.json` |

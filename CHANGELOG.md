@@ -8,6 +8,11 @@ All notable changes to this project will be documented here.
 
 - Added `website/`, a homepage and docs site built with Astro and Starlight. It covers the desktop app, the VS Code extension, `quota-cli`, and the Herdr plugin, with screenshots, install steps, and direct download links for each release.
 
+### 🐛 quota-cli
+
+- Claude now works on macOS. Claude Code keeps its login in the Keychain there instead of writing `~/.claude/.credentials.json`, so when the file is missing `quota-cli` reads the `Claude Code-credentials` Keychain item through `/usr/bin/security`. ([#14](https://github.com/pinkpixel-dev/quota/issues/14))
+- Antigravity now works on Windows. The lookup asked Credential Manager for `antigravity.gemini`, but the Antigravity CLI saves its entry as `gemini:antigravity`, so it never matched. ([#15](https://github.com/pinkpixel-dev/quota/issues/15))
+
 ## quota-vscode 1.5.0 - October 7, 2026
 
 Adds support for more than one account per provider, one card per account in the panel, and a picker for choosing exactly what shows in the status bar.

@@ -1,4 +1,6 @@
-use quota_core::claude::local::{read_local_credentials_at, LocalCredentialError};
+use quota_core::claude::local::{
+    parse_credentials_json, read_local_credentials_at, LocalCredentialError, KEYCHAIN_SERVICE,
+};
 use std::fs;
 
 fn temp_file(name: &str, body: &str) -> std::path::PathBuf {
@@ -96,4 +98,23 @@ fn malformed_error_never_leaks_token_in_debug_or_display() {
         }
         Ok(_) => panic!("Expected Malformed error but got Ok"),
     }
+}
+
+#[test]
+fn parses_the_payload_the_macos_keychain_returns() {
+    // `security find-generic-password -w` prints the same JSON the file holds,
+    // followed by a newline that the reader trims before parsing.
+    let raw = r#"{"claudeAiOauth":{"accessToken":"tok","expiresAt":4102444800000,"scopes":["user:inference"],"subscriptionType":"max"}}"#;
+
+    let creds = parse_credentials_json(raw).expect("parse");
+    assert_eq!(creds.access_token, "tok");
+    assert_eq!(creds.subscription_type.as_deref(), Some("max"));
+    assert_eq!(creds.scopes, vec!["user:inference".to_string()]);
+    assert!(creds.organization_uuid.is_none());
+}
+
+#[test]
+fn the_keychain_service_matches_what_claude_code_writes() {
+    // A typo here means the macOS fallback silently finds nothing.
+    assert_eq!(KEYCHAIN_SERVICE, "Claude Code-credentials");
 }

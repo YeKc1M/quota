@@ -192,6 +192,11 @@ pub fn read_active_google_email(gemini_home: &Path) -> Option<String> {
 pub const KEYRING_SERVICE: &str = "gemini";
 pub const KEYRING_USER: &str = "antigravity";
 
+/// The Credential Manager target name go-keyring writes on Windows, which is
+/// `service:user`. The Rust store would otherwise look up `user.service`
+/// (`antigravity.gemini`) and never find the CLI's entry.
+pub const WINDOWS_KEYRING_TARGET: &str = "gemini:antigravity";
+
 /// Parse the keyring payload. Split from the keyring call so the shape can be
 /// tested without a keyring, a session bus, or an unlock prompt.
 pub fn parse_keyring_secret(
@@ -261,14 +266,29 @@ fn parse_rfc3339_ms(value: &str) -> Option<i64> {
 /// Read the Antigravity CLI's credentials out of the OS keyring. Read-only:
 /// nothing is ever stored or deleted.
 pub fn read_keyring_credentials() -> Result<LocalAntigravityCredentials, LocalCredentialError> {
-    let entry = keyring::Entry::new(KEYRING_SERVICE, KEYRING_USER)
-        .map_err(|err| LocalCredentialError::Unreadable(err.to_string()))?;
+    let entry = keyring_entry().map_err(|err| LocalCredentialError::Unreadable(err.to_string()))?;
 
     match entry.get_password() {
         Ok(secret) => parse_keyring_secret(&secret),
         Err(keyring::Error::NoEntry) => Err(LocalCredentialError::NotFound),
         Err(err) => Err(LocalCredentialError::Unreadable(err.to_string())),
     }
+}
+
+#[cfg(not(windows))]
+fn keyring_entry() -> keyring::Result<keyring::Entry> {
+    keyring::Entry::new(KEYRING_SERVICE, KEYRING_USER)
+}
+
+/// The `keyring` wrapper has no way to pass a target name, so the entry is
+/// built through `keyring-core` once the wrapper has set up the default store.
+#[cfg(windows)]
+fn keyring_entry() -> keyring::Result<keyring_core::Entry> {
+    if keyring::Entry::store_status().is_err() {
+        return Err(keyring::Error::NoDefaultStore);
+    }
+    let modifiers = std::collections::HashMap::from([("target", WINDOWS_KEYRING_TARGET)]);
+    keyring_core::Entry::new_with_modifiers(KEYRING_SERVICE, KEYRING_USER, &modifiers)
 }
 
 /// Credentials for whichever Antigravity sign-in we can find, preferring the

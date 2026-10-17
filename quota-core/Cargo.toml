@@ -31,3 +31,8 @@ keyring = { version = "4", features = ["apple-native-keyring-store"] }
 # in the SSO cache file its IDE writes. Bundled so the build does not depend on
 # a system SQLite being present.
 rusqlite = { version = "0.31", features = ["bundled"] }
+
+[target.'cfg(windows)'.dependencies]
+# Lets the Antigravity reader pass an explicit Credential Manager target name,
+# which the `keyring` wrapper does not expose. Same version `keyring` uses.
+keyring-core = "1"
