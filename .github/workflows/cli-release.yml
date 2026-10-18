@@ -96,9 +96,12 @@ jobs:
           sha256sum quota-cli-*.tar.gz quota-cli-*.zip > SHA256SUMS.txt
           cat SHA256SUMS.txt
 
+      # A CLI release must never take "Latest", which belongs to the desktop
+      # app. Left to the API default, every quota-cli tag claimed it.
       - name: Publish release
         uses: softprops/action-gh-release@v2
         with:
+          make_latest: false
           files: |
             artifacts/quota-cli-*.tar.gz
             artifacts/quota-cli-*.zip
