@@ -8,6 +8,18 @@ All notable changes to this project will be documented here.
 
 - Added `website/`, a homepage and docs site built with Astro and Starlight. It covers the desktop app, the VS Code extension, `quota-cli`, and the Herdr plugin, with screenshots, install steps, and direct download links for each release.
 
+## quota-cli 0.2.3 - October 19, 2026
+
+Finishes the Windows Antigravity fix from 0.2.2.
+
+### 🐛 Fixes
+
+- Antigravity now actually reads on Windows. 0.2.2 found the right Credential Manager entry but failed with "Password data is not valid UTF-8". The Antigravity CLI stores the token as plain UTF-8 bytes, and the Rust keyring store decodes Windows passwords as UTF-16, so `quota-cli` now reads the raw bytes and decodes them as UTF-8 itself. Confirmed on Windows 11 by the reporter. ([#15](https://github.com/pinkpixel-dev/quota/issues/15))
+
+### 🏷️ Versioning
+
+- Bumped `quota-cli` to `0.2.3` and `quota-core` to `0.1.2`. The desktop app is unchanged.
+
 ## quota-cli 0.2.2 - October 18, 2026
 
 Fixes two credential lookups that only failed off Linux.
