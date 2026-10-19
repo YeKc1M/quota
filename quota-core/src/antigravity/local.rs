@@ -268,11 +268,29 @@ fn parse_rfc3339_ms(value: &str) -> Option<i64> {
 pub fn read_keyring_credentials() -> Result<LocalAntigravityCredentials, LocalCredentialError> {
     let entry = keyring_entry().map_err(|err| LocalCredentialError::Unreadable(err.to_string()))?;
 
-    match entry.get_password() {
+    match read_keyring_text(&entry) {
         Ok(secret) => parse_keyring_secret(&secret),
         Err(keyring::Error::NoEntry) => Err(LocalCredentialError::NotFound),
         Err(err) => Err(LocalCredentialError::Unreadable(err.to_string())),
     }
+}
+
+#[cfg(not(windows))]
+fn read_keyring_text(entry: &keyring::Entry) -> keyring::Result<String> {
+    entry.get_password()
+}
+
+/// The Windows store decodes passwords as UTF-16, but go-keyring writes the
+/// Go string's raw UTF-8 bytes, so the blob is read as bytes and decoded here.
+#[cfg(windows)]
+fn read_keyring_text(entry: &keyring_core::Entry) -> keyring::Result<String> {
+    decode_keyring_blob(entry.get_secret()?)
+}
+
+/// Decode a keyring blob written by go-keyring. On failure the error carries
+/// no secret bytes, only the fact that the blob was not UTF-8.
+pub fn decode_keyring_blob(blob: Vec<u8>) -> keyring::Result<String> {
+    String::from_utf8(blob).map_err(|_| keyring::Error::BadEncoding(Vec::new()))
 }
 
 #[cfg(not(windows))]

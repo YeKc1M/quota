@@ -188,7 +188,8 @@ fn reading_never_writes_to_the_credentials_file() {
 // ---------------------------------------------------------------------------
 
 use quota_core::antigravity::local::{
-    parse_keyring_secret, KEYRING_SERVICE, KEYRING_USER, WINDOWS_KEYRING_TARGET,
+    decode_keyring_blob, parse_keyring_secret, KEYRING_SERVICE, KEYRING_USER,
+    WINDOWS_KEYRING_TARGET,
 };
 
 /// Builds an id token shaped like the one the Antigravity CLI stores.
@@ -284,4 +285,23 @@ fn the_windows_target_uses_go_keyrings_service_colon_user_form() {
         WINDOWS_KEYRING_TARGET,
         format!("{}:{}", KEYRING_SERVICE, KEYRING_USER)
     );
+}
+
+#[test]
+fn a_go_keyring_blob_is_decoded_as_utf8_bytes() {
+    // go-keyring stores `[]byte(password)`, so the blob is UTF-8 even on
+    // Windows, where the Rust store would decode it as UTF-16 (issue #15).
+    let secret = keyring_secret("2027-01-01T00:00:00Z");
+    let decoded = decode_keyring_blob(secret.clone().into_bytes()).expect("decode blob");
+    assert_eq!(decoded, secret);
+    parse_keyring_secret(&decoded).expect("parse decoded secret");
+}
+
+#[test]
+fn a_non_utf8_blob_fails_without_quoting_its_bytes() {
+    let err = decode_keyring_blob(vec![b's', b'e', b'c', 0xff]).expect_err("invalid utf-8");
+    match err {
+        keyring::Error::BadEncoding(bytes) => assert!(bytes.is_empty()),
+        other => panic!("expected BadEncoding, got {other:?}"),
+    }
 }
