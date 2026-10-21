@@ -4,7 +4,7 @@ Provider logic behind [Quota](https://github.com/pinkpixel-dev/quota): read AI u
 
 This is the shared crate that the Quota desktop app and [`quota-cli`](https://crates.io/crates/quota-cli) both build on. If you want the tool rather than the library, install `quota-cli`.
 
-Six providers are supported: Claude, Codex, Cursor, Antigravity, Grok, and Kiro. Each one is a module with the same two halves. `local.rs` finds and parses the credentials, and `local_usage.rs` fetches usage and normalizes it into a `ProviderUsage`.
+Seven providers are supported: Claude, Codex, Cursor, Antigravity, Grok, Kiro, and Kimi Code (`kimi`). Each one is a module with the same two halves. `local.rs` finds and parses the credentials, and `local_usage.rs` fetches usage and normalizes it into a `ProviderUsage`.
 
 ```rust
 let reports = quota_core::providers::fetch_all().await;
@@ -18,6 +18,8 @@ for (provider, result) in reports {
 ```
 
 `fetch_provider(name)` does one provider and returns `None` for a name that has no reader, which lets a caller tell "unknown provider" apart from "provider failed".
+
+The Kimi provider reads OAuth credentials from `~/.kimi-code/credentials/kimi-code.json`, honoring `KIMI_CODE_HOME`. It fetches the default Kimi Code `/usages` endpoint and normalizes `used_ratio` into remaining percentages for `5h`, `Wk`, `Month`, and `Code`, preserving available reset times. Missing or invalid windows are skipped; no valid windows produces a `No usage data` note. Expired or rejected tokens must be renewed by Kimi Code. Legacy `~/.kimi` credentials, API keys, and custom service addresses are outside this provider's scope.
 
 ## Things worth knowing before you depend on this
 

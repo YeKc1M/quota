@@ -20,8 +20,11 @@ The labels differ by provider, because the providers themselves measure differen
 | `agy`, `antigravity`, `antigravity-cli` | `5h`, `Wk` | the Gemini model windows |
 | `grok` | `Credit` | the credit pool for the billing period |
 | `kiro` | `Credits`, `Bonus` | base credits, and a bonus or free trial pool when you have one |
+| `kimi`, `kimi-code`, `kimi code` | `5h`, `Wk`, `Month`, `Code` | Kimi Code subscription windows, showing the first two available |
 
 The percentages are how much you have left, not how much you've used.
+
+For example, a Kimi pane can show `5h 82% · Wk 64%`. The CLI's `usage` command includes all available windows and reset times, including monthly total (`Month`) and monthly coding (`Code`) quotas. If Kimi returns no valid windows, the token reads `No usage data`.
 
 If no pane in your session is running a supported agent, the plugin does nothing and makes no network call. Only the providers that actually have a pane on screen get fetched, so a Codex pane never costs you a Cursor request.
 
@@ -138,6 +141,8 @@ This plugin reads each agent CLI's locally stored credentials to work out your u
 Antigravity is the one exception, and a narrow one. Google doesn't rotate its refresh token, so a fresh access token is held in memory for a single request and nothing is ever written to disk.
 
 One thing worth knowing: several of these tools keep separate credentials for their CLI and their IDE, and the two can be different accounts. Cursor, Kiro, and Antigravity all do this. The plugin always reads the CLI's store, since that's the thing actually running in your pane.
+
+Kimi Code requires an OAuth login through `/login`. Its credentials are read from `~/.kimi-code/credentials/kimi-code.json`, or `$KIMI_CODE_HOME/credentials/kimi-code.json` when that directory override is set. Quota reads the access token without refreshing or changing it. If it has expired or is rejected, run Kimi Code to refresh it, or use `/login`. This provider supports the current Kimi Code CLI and its default service; legacy `~/.kimi` credentials, API key logins, and custom service addresses are not supported.
 
 ## When the sidebar shows nothing
 
