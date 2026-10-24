@@ -4,6 +4,7 @@ import type { CodexAccountSummary } from './codex';
 import type { CursorAccountSummary } from './cursor';
 import type { GitHubCopilotAccountSummary } from './githubCopilot';
 import type { GrokAccountSummary } from './grok';
+import type { KimiAccountSummary } from './kimi';
 import type { KiroAccountSummary } from './kiro';
 import type { OpenCodeGoAccountSummary } from './opencodeGo';
 import type { UsageDisplayMode } from './usageDisplay';
@@ -16,7 +17,8 @@ export type TrayProviderKey =
   | 'kiro'
   | 'cursor'
   | 'grok'
-  | 'opencodeGo';
+  | 'opencodeGo'
+  | 'kimi';
 
 export interface TrayUsageAccounts {
   githubCopilot: GitHubCopilotAccountSummary[];
@@ -27,6 +29,7 @@ export interface TrayUsageAccounts {
   cursor: CursorAccountSummary[];
   grok: GrokAccountSummary[];
   opencodeGo: OpenCodeGoAccountSummary[];
+  kimi: KimiAccountSummary[];
 }
 
 function clampPercent(value: number): number {
@@ -151,6 +154,18 @@ function formatOpenCodeGoRows(accounts: OpenCodeGoAccountSummary[], mode: UsageD
   ]));
 }
 
+function formatKimiRows(accounts: KimiAccountSummary[], mode: UsageDisplayMode): string[] {
+  return accounts.map((account) => {
+    const byLabel = new Map(account.usage.windows.map((window) => [window.label, window.remainingPercent]));
+    return compactRow('Kimi', account.label, [
+      remaining('5h', byLabel.get('5h'), mode),
+      remaining('Wk', byLabel.get('Wk'), mode),
+      remaining('Month', byLabel.get('Month'), mode),
+      remaining('Code', byLabel.get('Code'), mode),
+    ]);
+  });
+}
+
 export function buildTrayUsageRows(
   accounts: TrayUsageAccounts,
   providerOrder: readonly TrayProviderKey[],
@@ -165,6 +180,7 @@ export function buildTrayUsageRows(
     cursor: () => formatCursorRows(accounts.cursor, mode),
     grok: () => formatGrokRows(accounts.grok, mode),
     opencodeGo: () => formatOpenCodeGoRows(accounts.opencodeGo, mode),
+    kimi: () => formatKimiRows(accounts.kimi, mode),
   };
 
   return providerOrder.flatMap((provider) => formatters[provider]());

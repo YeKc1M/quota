@@ -12,6 +12,7 @@ export const PROVIDER_LABELS: Record<ProviderId, string> = {
   kiro: 'Kiro',
   grok: 'Grok',
   opencodeGo: 'OpenCode Go',
+  kimi: 'Kimi Code',
 };
 
 export const PROVIDER_ORDER: ProviderId[] = [
@@ -22,6 +23,7 @@ export const PROVIDER_ORDER: ProviderId[] = [
   'kiro',
   'grok',
   'opencodeGo',
+  'kimi',
 ];
 
 export const CANONICAL_TRACK_ORDER: TrackId[] = [
@@ -46,6 +48,10 @@ export const CANONICAL_TRACK_ORDER: TrackId[] = [
   'opencodeGo.fiveHour',
   'opencodeGo.weekly',
   'opencodeGo.monthly',
+  'kimi.fiveHour',
+  'kimi.weekly',
+  'kimi.monthly',
+  'kimi.monthlyCode',
 ];
 
 export const TRACK_LABELS: Record<TrackId, string> = {
@@ -70,6 +76,10 @@ export const TRACK_LABELS: Record<TrackId, string> = {
   'opencodeGo.fiveHour': '5h usage',
   'opencodeGo.weekly': 'Weekly usage',
   'opencodeGo.monthly': 'Monthly usage',
+  'kimi.fiveHour': '5h usage',
+  'kimi.weekly': 'Weekly usage',
+  'kimi.monthly': 'Monthly usage',
+  'kimi.monthlyCode': 'Monthly Code usage',
 };
 
 export const TRACK_STATUS_BAR_LABEL: Record<TrackId, string> = {
@@ -94,4 +104,8 @@ export const TRACK_STATUS_BAR_LABEL: Record<TrackId, string> = {
   'opencodeGo.fiveHour': 'Go:5h',
   'opencodeGo.weekly': 'Go:Wk',
   'opencodeGo.monthly': 'Go:Mo',
+  'kimi.fiveHour': 'Kimi:5h',
+  'kimi.weekly': 'Kimi:Wk',
+  'kimi.monthly': 'Kimi:Mo',
+  'kimi.monthlyCode': 'Kimi:Code',
 };

@@ -44,6 +44,7 @@ const codexProvider_1 = require("./codexProvider");
 const configuration_1 = require("./configuration");
 const githubCopilotProvider_1 = require("./githubCopilotProvider");
 const grokProvider_1 = require("./grokProvider");
+const kimiProvider_1 = require("./kimiProvider");
 const kiroProvider_1 = require("./kiroProvider");
 const opencodeGoProvider_1 = require("./opencodeGoProvider");
 const panel_1 = require("./panel");
@@ -60,6 +61,7 @@ let antigravityProvider;
 let kiroProvider;
 let grokProvider;
 let openCodeGoProvider;
+let kimiProvider;
 let refreshTimer;
 let lastManualRefreshAt = 0;
 const MANUAL_REFRESH_COOLDOWN_MS = 10_000;
@@ -74,6 +76,7 @@ async function loadSnapshot() {
         ...(await kiroProvider.getTracks()),
         ...(await grokProvider.getTracks()),
         ...(await openCodeGoProvider.getTracks()),
+        ...(await kimiProvider.getTracks()),
     ];
     return {
         sourcePath: 'VS Code extension accounts',
@@ -98,6 +101,8 @@ async function refresh(showToast = false, options = {}) {
             await grokProvider.refreshAll();
         if (await openCodeGoProvider.hasAccounts())
             await openCodeGoProvider.refreshAll();
+        if (await kimiProvider.hasAccounts())
+            await kimiProvider.refreshAll();
     }
     snapshot = await loadSnapshot();
     statusBar.update(snapshot, config);
@@ -116,10 +121,18 @@ async function refresh(showToast = false, options = {}) {
                     ? 'Claude Code'
                     : onlyProvider === 'grok'
                         ? 'Grok'
-                        : undefined;
-            const action = providerLabel ? `Reauthenticate ${providerLabel}` : 'Open Quota';
+                        : onlyProvider === 'kimi'
+                            ? 'Kimi Code'
+                            : undefined;
+            const action = providerLabel
+                ? onlyProvider === 'kimi'
+                    ? 'Reconnect Kimi Code'
+                    : `Reauthenticate ${providerLabel}`
+                : 'Open Quota';
             const selected = await vscode.window.showErrorMessage(providerLabel
-                ? `${providerLabel} authorization expired. Reauthenticate to resume quota updates.`
+                ? onlyProvider === 'kimi'
+                    ? 'Kimi Code authorization expired. Run Kimi Code or use /login, then reconnect.'
+                    : `${providerLabel} authorization expired. Reauthenticate to resume quota updates.`
                 : 'Some connected accounts need to be reauthenticated. Open Quota for details.', action);
             if (selected === action) {
                 if (onlyProvider === 'codex') {
@@ -130,6 +143,9 @@ async function refresh(showToast = false, options = {}) {
                 }
                 else if (onlyProvider === 'grok') {
                     await vscode.commands.executeCommand('quota.connectGrok');
+                }
+                else if (onlyProvider === 'kimi') {
+                    await vscode.commands.executeCommand('quota.connectKimi');
                 }
                 else {
                     await vscode.commands.executeCommand('quota.openPanel');
@@ -174,6 +190,7 @@ async function activate(context) {
     kiroProvider = new kiroProvider_1.KiroProvider(context);
     grokProvider = new grokProvider_1.GrokProvider(context);
     openCodeGoProvider = new opencodeGoProvider_1.OpenCodeGoProvider(context);
+    kimiProvider = new kimiProvider_1.KimiProvider(context);
     config = (0, configuration_1.readConfiguration)();
     snapshot = await loadSnapshot();
     statusBar.update(snapshot, config);
@@ -369,6 +386,30 @@ async function activate(context) {
         }
     }), vscode.commands.registerCommand('quota.disconnectOpenCodeGo', async () => {
         await openCodeGoProvider.disconnect();
+        await refresh(false, { refreshProviders: false });
+    }), vscode.commands.registerCommand('quota.connectKimi', async () => {
+        try {
+            const account = await kimiProvider.connect();
+            if (account)
+                await refresh(true, { refreshProviders: false });
+        }
+        catch (error) {
+            const message = error instanceof Error ? error.message : String(error);
+            void vscode.window.showErrorMessage(`Kimi Code connection failed: ${message}`);
+        }
+    }), vscode.commands.registerCommand('quota.refreshKimi', async () => {
+        try {
+            if (!checkManualRefreshCooldown())
+                return;
+            await kimiProvider.refreshAll();
+            await refresh(true, { refreshProviders: false });
+        }
+        catch (error) {
+            const message = error instanceof Error ? error.message : String(error);
+            void vscode.window.showErrorMessage(`Kimi Code refresh failed: ${message}`);
+        }
+    }), vscode.commands.registerCommand('quota.disconnectKimi', async () => {
+        await kimiProvider.disconnect();
         await refresh(false, { refreshProviders: false });
     }), vscode.workspace.onDidChangeConfiguration(async (event) => {
         if (event.affectsConfiguration('quota')) {

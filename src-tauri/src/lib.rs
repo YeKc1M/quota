@@ -8,6 +8,7 @@ pub mod cursor;
 pub mod external_open;
 mod github_copilot;
 pub mod grok;
+pub mod kimi;
 pub mod kiro;
 pub mod opencode_go;
 mod tray;
@@ -123,7 +124,12 @@ pub fn run() {
             opencode_go::add_opencode_go_account,
             opencode_go::refresh_opencode_go_account,
             opencode_go::refresh_all_opencode_go_accounts,
-            opencode_go::delete_opencode_go_account
+            opencode_go::delete_opencode_go_account,
+            kimi::list_kimi_accounts,
+            kimi::import_kimi_from_local,
+            kimi::refresh_kimi_account,
+            kimi::refresh_all_kimi_accounts,
+            kimi::delete_kimi_account
         ])
         .run(tauri::generate_context!())
         .expect("error while running Quota");

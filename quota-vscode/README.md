@@ -1,6 +1,6 @@
 # Quota: AI Usage Tracker
 
-Track AI usage from the editor you already have open. Quota adds a compact status bar button and a resize-friendly quota panel for GitHub Copilot, Codex, Claude Code, Antigravity, Kiro, Grok, and OpenCode Go.
+Track AI usage from the editor you already have open. Quota adds a compact status bar button and a resize-friendly quota panel for GitHub Copilot, Codex, Claude Code, Antigravity, Kiro, Grok, OpenCode Go, and Kimi Code.
 
 ## See your AI quota at a glance
 
@@ -10,7 +10,7 @@ Quota is built for developers who use more than one AI coding tool and want one 
 
 ## What Quota does
 
-- **Tracks multiple providers**: GitHub Copilot, Codex, Claude Code, Antigravity, Kiro, Grok, and OpenCode Go
+- **Tracks multiple providers**: GitHub Copilot, Codex, Claude Code, Antigravity, Kiro, Grok, OpenCode Go, and Kimi Code
 - **Shows a permanent status bar button**: open Quota without leaving your editor
 - **Tracks more than one account per provider**: connect a work and a personal account side by side
 - **Pins quota tracks to the status bar**: choose the exact limits you want visible while coding, per account
@@ -33,6 +33,7 @@ Quota currently supports direct extension-owned auth for:
 | Kiro | Prompt credits |
 | Grok | Credit window, monthly spend, on-demand spend |
 | OpenCode Go | 5h usage, weekly usage, monthly usage |
+| Kimi Code | 5h usage, weekly usage, monthly usage, monthly Code usage |
 
 Cursor is not included in the extension because modern Cursor is its own standalone app. The Quota desktop app can still track Cursor.
 
@@ -62,6 +63,7 @@ Example track IDs:
 - `kiro.promptCredits`
 - `grok.credits`
 - `opencodeGo.fiveHour`
+- `kimi.fiveHour`
 
 ## Quota panel
 
@@ -90,6 +92,7 @@ Run the matching connect command from the Command Palette:
 - `Quota: Connect Kiro`
 - `Quota: Connect Grok`
 - `Quota: Connect OpenCode Go`
+- `Quota: Connect Kimi Code`
 
 Running a connect command again while signed in to a different account adds a second account instead of replacing the first one. The panel's **Add** button does the same thing. If you connect the same account twice, Quota just updates the existing one.
 
@@ -98,6 +101,8 @@ Each provider uses its own auth flow. Quota stores raw provider tokens only in V
 Grok can also be connected without a browser round trip by running `Quota: Import Local Grok CLI Account`, which reads the credentials the Grok CLI already stored in `~/.grok/auth.json`.
 
 OpenCode Go uses an API key instead of a sign-in flow. Copy your key from the [OpenCode console](https://opencode.ai/auth), run `Quota: Connect OpenCode Go`, and paste it in. You can give the account a name, or leave it blank to label it with the last four characters of the key. Quota checks the key before saving it and keeps it in SecretStorage like every other provider credential.
+
+Kimi Code reuses the OAuth session the Kimi Code CLI already stores in `~/.kimi-code/credentials/kimi-code.json` (or `$KIMI_CODE_HOME/credentials/kimi-code.json`). Run `Quota: Connect Kimi Code` to import it; running it again reconnects the same account after your Kimi Code login rotates. The extension never copies the access token into its own state and never tries to refresh it — every refresh re-reads the local credential file. If the session is missing, expired, or rejected, Quota says to run Kimi Code or `/login` instead.
 
 When a Codex, Claude Code, or Grok refresh token is rejected, Quota keeps the cached account visible, identifies that reauthentication is required, and offers the existing secure connection flow again. It does not delete the saved account before the new authorization succeeds.
 
@@ -116,7 +121,8 @@ Open `Quota: Open Settings` or edit your VS Code settings:
     "antigravity",
     "kiro",
     "grok",
-    "opencodeGo"
+    "opencodeGo",
+    "kimi"
   ],
   "quota.statusBar.enabled": true,
   "quota.statusBar.items": ["codex.primary"],
@@ -155,6 +161,9 @@ Open `Quota: Open Settings` or edit your VS Code settings:
 | `Quota: Connect OpenCode Go` | Connect an OpenCode Go account with its API key |
 | `Quota: Refresh OpenCode Go` | Refresh OpenCode Go quota data |
 | `Quota: Disconnect OpenCode Go` | Remove the extension-stored OpenCode Go key |
+| `Quota: Connect Kimi Code` | Import the local Kimi Code login from its credential file |
+| `Quota: Refresh Kimi Code` | Refresh Kimi Code quota data |
+| `Quota: Disconnect Kimi Code` | Remove the extension-stored Kimi Code account summary |
 
 ## Status bar track IDs
 
@@ -183,7 +192,11 @@ Codex keeps the stable `codex.primary` track ID for the five-hour window. The re
   "grok.onDemand",
   "opencodeGo.fiveHour",
   "opencodeGo.weekly",
-  "opencodeGo.monthly"
+  "opencodeGo.monthly",
+  "kimi.fiveHour",
+  "kimi.weekly",
+  "kimi.monthly",
+  "kimi.monthlyCode"
 ]
 ```
 

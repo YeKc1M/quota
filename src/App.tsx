@@ -130,6 +130,14 @@ import {
   type OpenCodeGoAccountSummary,
   type OpenCodeGoWindow,
 } from './data/opencodeGo';
+import {
+  deleteKimiAccount,
+  importKimiFromLocal,
+  listKimiAccounts,
+  refreshAllKimiAccounts,
+  refreshKimiAccount,
+  type KimiAccountSummary,
+} from './data/kimi';
 import { integrations } from './data/integrations';
 import { listenForTrayRefresh, updateTrayMenu } from './data/tray';
 import { buildTrayUsageRows, type TrayProviderKey } from './data/trayRows';
@@ -145,7 +153,8 @@ type AppView =
   | 'kiro-accounts'
   | 'cursor-accounts'
   | 'grok-accounts'
-  | 'opencode-go-accounts';
+  | 'opencode-go-accounts'
+  | 'kimi-accounts';
 
 export type ViewMode = 'default' | 'compact' | 'list';
 type ThemeMode = 'system' | 'dark' | 'light';
@@ -159,6 +168,7 @@ const KIRO_ICON = '/brand-icons/kiro.svg';
 const CURSOR_ICON = '/brand-icons/cursor.svg';
 const GROK_ICON = '/brand-icons/grok.svg';
 const OPENCODE_ICON = '/brand-icons/opencode.svg';
+const KIMI_ICON = '/brand-icons/kimi.svg';
 const DASHBOARD_VIEW_MODE_KEY = 'quota.dashboardViewMode';
 const ACCOUNT_PAGES_VIEW_MODE_KEY = 'quota.accountPagesViewMode';
 const THEME_MODE_KEY = 'quota.themeMode';
@@ -177,7 +187,7 @@ const MIN_NOTIFICATION_THRESHOLD = 1;
 const MAX_NOTIFICATION_THRESHOLD = 99;
 const VIEW_MODES: ViewMode[] = ['default', 'compact', 'list'];
 const THEME_MODES: ThemeMode[] = ['system', 'dark', 'light'];
-const DEFAULT_PROVIDER_ORDER: ProviderKey[] = ['githubCopilot', 'codex', 'antigravity', 'claude', 'kiro', 'cursor', 'grok', 'opencodeGo'];
+const DEFAULT_PROVIDER_ORDER: ProviderKey[] = ['githubCopilot', 'codex', 'antigravity', 'claude', 'kiro', 'cursor', 'grok', 'opencodeGo', 'kimi'];
 const PROVIDERS: Array<{ key: ProviderKey; name: string; iconPath: string }> = [
   { key: 'githubCopilot', name: 'GitHub Copilot', iconPath: GITHUB_COPILOT_ICON },
   { key: 'codex', name: 'Codex', iconPath: CODEX_ICON },
@@ -187,6 +197,7 @@ const PROVIDERS: Array<{ key: ProviderKey; name: string; iconPath: string }> = [
   { key: 'cursor', name: 'Cursor', iconPath: CURSOR_ICON },
   { key: 'grok', name: 'Grok', iconPath: GROK_ICON },
   { key: 'opencodeGo', name: 'OpenCode Go', iconPath: OPENCODE_ICON },
+  { key: 'kimi', name: 'Kimi Code', iconPath: KIMI_ICON },
 ];
 
 function readStoredViewMode(key: string): ViewMode {
@@ -391,6 +402,7 @@ function collectQuotaMetrics(
   cursorAccounts: CursorAccountSummary[],
   grokAccounts: GrokAccountSummary[],
   openCodeGoAccounts: OpenCodeGoAccountSummary[],
+  kimiAccounts: KimiAccountSummary[],
 ): QuotaMetric[] {
   const metrics: QuotaMetric[] = [];
 
@@ -485,6 +497,15 @@ function collectQuotaMetrics(
     }
   }
 
+  for (const a of kimiAccounts) {
+    const label = a.label;
+    for (const window of a.usage.windows) {
+      if (window.remainingPercent != null) {
+        metrics.push({ key: `kimi:${a.id}:${window.label}`, accountLabel: `Kimi Code (${label})`, metricLabel: `Kimi ${kimiWindowTitle(window.label)}`, remaining: window.remainingPercent });
+      }
+    }
+  }
+
   return metrics;
 }
 
@@ -527,6 +548,7 @@ export function App() {
   const [cursorAccounts, setCursorAccounts] = useState<CursorAccountSummary[]>([]);
   const [grokAccounts, setGrokAccounts] = useState<GrokAccountSummary[]>([]);
   const [openCodeGoAccounts, setOpenCodeGoAccounts] = useState<OpenCodeGoAccountSummary[]>([]);
+  const [kimiAccounts, setKimiAccounts] = useState<KimiAccountSummary[]>([]);
   const [copilotLogin, setCopilotLogin] = useState<GitHubCopilotOAuthStartResponse | null>(null);
   const [codexLogin, setCodexLogin] = useState<CodexOAuthStartResponse | null>(null);
   const [antigravityLogin, setAntigravityLogin] = useState<AntigravityOAuthStartResponse | null>(null);
@@ -544,6 +566,7 @@ export function App() {
   const [cursorBusy, setCursorBusy] = useState(false);
   const [grokBusy, setGrokBusy] = useState(false);
   const [openCodeGoBusy, setOpenCodeGoBusy] = useState(false);
+  const [kimiBusy, setKimiBusy] = useState(false);
   const [copilotError, setCopilotError] = useState<string | null>(null);
   const [codexError, setCodexError] = useState<string | null>(null);
   const [antigravityError, setAntigravityError] = useState<string | null>(null);
@@ -552,6 +575,7 @@ export function App() {
   const [cursorError, setCursorError] = useState<string | null>(null);
   const [grokError, setGrokError] = useState<string | null>(null);
   const [openCodeGoError, setOpenCodeGoError] = useState<string | null>(null);
+  const [kimiError, setKimiError] = useState<string | null>(null);
   const [openCodeGoFormOpen, setOpenCodeGoFormOpen] = useState(false);
   const [trayRefreshing, setTrayRefreshing] = useState(false);
   const autoRefreshRunningRef = useRef(false);
@@ -562,7 +586,7 @@ export function App() {
   const notificationCheckActiveRef = useRef(false);
 
   const connectedCount =
-    copilotAccounts.length + codexAccounts.length + antigravityAccounts.length + claudeAccounts.length + kiroAccounts.length + cursorAccounts.length + grokAccounts.length + openCodeGoAccounts.length;
+    copilotAccounts.length + codexAccounts.length + antigravityAccounts.length + claudeAccounts.length + kiroAccounts.length + cursorAccounts.length + grokAccounts.length + openCodeGoAccounts.length + kimiAccounts.length;
   const trayUsageRows = useMemo(() => buildTrayUsageRows({
     githubCopilot: copilotAccounts,
     codex: codexAccounts,
@@ -572,6 +596,7 @@ export function App() {
     cursor: cursorAccounts,
     grok: grokAccounts,
     opencodeGo: openCodeGoAccounts,
+    kimi: kimiAccounts,
   }, providerOrder, usageDisplayMode), [
     copilotAccounts,
     codexAccounts,
@@ -581,6 +606,7 @@ export function App() {
     cursorAccounts,
     grokAccounts,
     openCodeGoAccounts,
+    kimiAccounts,
     providerOrder,
     usageDisplayMode,
   ]);
@@ -594,6 +620,7 @@ export function App() {
     void loadCursorAccounts();
     void loadGrokAccounts();
     void loadOpenCodeGoAccounts();
+    void loadKimiAccounts();
   }, []);
 
   useEffect(() => {
@@ -731,6 +758,15 @@ export function App() {
     }
   }
 
+  async function loadKimiAccounts() {
+    try {
+      setKimiAccounts(await listKimiAccounts());
+      setKimiError(null);
+    } catch (error) {
+      setKimiError(error instanceof Error ? error.message : String(error));
+    }
+  }
+
   async function addOpenCodeGo(apiKey: string, name: string): Promise<boolean> {
     setOpenCodeGoBusy(true);
     try {
@@ -778,6 +814,58 @@ export function App() {
       setOpenCodeGoError(error instanceof Error ? error.message : String(error));
     } finally {
       setOpenCodeGoBusy(false);
+    }
+  }
+
+  async function importLocalKimi() {
+    setKimiBusy(true);
+    try {
+      const account = await importKimiFromLocal();
+      setKimiAccounts((accounts) => [account, ...accounts.filter((item) => item.id !== account.id)]);
+      setView('dashboard');
+      setKimiError(null);
+    } catch (error) {
+      setKimiError(error instanceof Error ? error.message : String(error));
+    } finally {
+      setKimiBusy(false);
+    }
+  }
+
+  async function refreshKimi(accountId: string) {
+    setKimiBusy(true);
+    try {
+      const account = await refreshKimiAccount(accountId);
+      setKimiAccounts((accounts) => accounts.map((item) => (item.id === account.id ? account : item)));
+      setKimiError(null);
+    } catch (error) {
+      setKimiError(error instanceof Error ? error.message : String(error));
+    } finally {
+      setKimiBusy(false);
+    }
+  }
+
+  async function refreshAllKimi() {
+    setKimiBusy(true);
+    try {
+      setKimiAccounts(await refreshAllKimiAccounts());
+      setKimiError(null);
+    } catch (error) {
+      setKimiError(error instanceof Error ? error.message : String(error));
+    } finally {
+      setKimiBusy(false);
+    }
+  }
+
+  async function removeKimiAccount(accountId: string) {
+    setKimiBusy(true);
+    try {
+      await deleteKimiAccount(accountId);
+      setKimiAccounts((accounts) => accounts.filter((item) => item.id !== accountId));
+      setKimiError(null);
+    } catch (error) {
+      setKimiError(error instanceof Error ? error.message : String(error));
+    } finally {
+      setKimiBusy(false);
     }
   }
 
@@ -1562,6 +1650,7 @@ export function App() {
       if (cursorAccounts.length > 0 && !cursorBusy) refreshTasks.push(refreshAllCursor);
       if (grokAccounts.length > 0 && !grokBusy) refreshTasks.push(refreshAllGrok);
       if (openCodeGoAccounts.length > 0 && !openCodeGoBusy) refreshTasks.push(refreshAllOpenCodeGo);
+      if (kimiAccounts.length > 0 && !kimiBusy) refreshTasks.push(refreshAllKimi);
 
       for (const refreshTask of refreshTasks) {
         await refreshTask();
@@ -1621,7 +1710,7 @@ export function App() {
     if (!notificationsEnabled || !notificationCheckActiveRef.current) return;
 
     const metrics = collectQuotaMetrics(
-      copilotAccounts, codexAccounts, antigravityAccounts, claudeAccounts, kiroAccounts, cursorAccounts, grokAccounts, openCodeGoAccounts,
+      copilotAccounts, codexAccounts, antigravityAccounts, claudeAccounts, kiroAccounts, cursorAccounts, grokAccounts, openCodeGoAccounts, kimiAccounts,
     );
 
     for (const metric of metrics) {
@@ -1639,7 +1728,7 @@ export function App() {
         notifiedMetricsRef.current.delete(metric.key);
       }
     }
-  }, [copilotAccounts, codexAccounts, antigravityAccounts, claudeAccounts, kiroAccounts, cursorAccounts, grokAccounts, openCodeGoAccounts, notificationsEnabled, notificationThreshold]);
+  }, [copilotAccounts, codexAccounts, antigravityAccounts, claudeAccounts, kiroAccounts, cursorAccounts, grokAccounts, openCodeGoAccounts, kimiAccounts, notificationsEnabled, notificationThreshold]);
 
   async function handleNotificationsEnabledChange(enabled: boolean) {
     setNotificationsEnabled(enabled);
@@ -1678,6 +1767,7 @@ export function App() {
         cursor: cursorAccounts.length,
         grok: grokAccounts.length,
         opencodeGo: openCodeGoAccounts.length,
+        kimi: kimiAccounts.length,
       },
       providers: {
         githubCopilot: copilotAccounts,
@@ -1688,6 +1778,7 @@ export function App() {
         cursor: cursorAccounts,
         grok: grokAccounts,
         opencodeGo: openCodeGoAccounts,
+        kimi: kimiAccounts,
       },
     };
     const json = JSON.stringify(payload, null, 2);
@@ -1759,6 +1850,7 @@ export function App() {
               cursorAccounts={cursorAccounts}
               grokAccounts={grokAccounts}
               openCodeGoAccounts={openCodeGoAccounts}
+              kimiAccounts={kimiAccounts}
               copilotBusy={copilotBusy}
               codexBusy={codexBusy}
               antigravityBusy={antigravityBusy}
@@ -1767,6 +1859,7 @@ export function App() {
               cursorBusy={cursorBusy}
               grokBusy={grokBusy}
               openCodeGoBusy={openCodeGoBusy}
+              kimiBusy={kimiBusy}
               copilotError={copilotError}
               codexError={codexError}
               antigravityError={antigravityError}
@@ -1775,6 +1868,7 @@ export function App() {
               cursorError={cursorError}
               grokError={grokError}
               openCodeGoError={openCodeGoError}
+              kimiError={kimiError}
               onRefreshAllCopilot={refreshAllCopilot}
               onRefreshCopilotAccount={refreshCopilotAccount}
               onRemoveCopilotAccount={removeCopilotAccount}
@@ -1801,6 +1895,10 @@ export function App() {
               onReauthenticateGrok={startGrokAuth}
               onRefreshAllOpenCodeGo={refreshAllOpenCodeGo}
               onRemoveOpenCodeGoAccount={removeOpenCodeGoAccount}
+              onRefreshAllKimi={refreshAllKimi}
+              onRefreshKimiAccount={refreshKimi}
+              onRemoveKimiAccount={removeKimiAccount}
+              onReauthenticateKimi={importLocalKimi}
               onOpenIntegrations={() => setView('integrations')}
               onOpenCopilotAccounts={() => setView('github-copilot-accounts')}
               onOpenCodexAccounts={() => setView('codex-accounts')}
@@ -1810,6 +1908,7 @@ export function App() {
               onOpenCursorAccounts={() => setView('cursor-accounts')}
               onOpenGrokAccounts={() => setView('grok-accounts')}
               onOpenOpenCodeGoAccounts={() => setView('opencode-go-accounts')}
+              onOpenKimiAccounts={() => setView('kimi-accounts')}
             />
           ) : view === 'settings' ? (
             <SettingsView
@@ -1950,6 +2049,21 @@ export function App() {
               onRemoveAccount={removeOpenCodeGoAccount}
               onTogglePinnedAccount={togglePinnedAccount}
             />
+          ) : view === 'kimi-accounts' ? (
+            <KimiAccountsView
+              viewMode={accountPagesViewMode}
+              accounts={kimiAccounts}
+              busy={kimiBusy}
+              error={kimiError}
+              pinnedAccounts={pinnedAccounts}
+              onBack={() => setView('dashboard')}
+              onOpenIntegrations={() => setView('integrations')}
+              onRefreshAll={refreshAllKimi}
+              onRefreshAccount={refreshKimi}
+              onRemoveAccount={removeKimiAccount}
+              onReauthenticate={importLocalKimi}
+              onTogglePinnedAccount={togglePinnedAccount}
+            />
           ) : (
             <IntegrationsView
               connectedCount={connectedCount}
@@ -1960,7 +2074,9 @@ export function App() {
               cursorConnectedCount={cursorAccounts.length}
               grokConnectedCount={grokAccounts.length}
               openCodeGoConnectedCount={openCodeGoAccounts.length}
+              kimiConnectedCount={kimiAccounts.length}
               openCodeGoError={openCodeGoError}
+              kimiError={kimiError}
               openCodeGoFormOpen={openCodeGoFormOpen}
               onStartOpenCodeGo={() => setOpenCodeGoFormOpen(true)}
               onAddOpenCodeGo={addOpenCodeGo}
@@ -1974,6 +2090,7 @@ export function App() {
               cursorBusy={cursorBusy}
               grokBusy={grokBusy}
               openCodeGoBusy={openCodeGoBusy}
+              kimiBusy={kimiBusy}
               copilotError={copilotError}
               codexError={codexError}
               antigravityError={antigravityError}
@@ -2002,6 +2119,7 @@ export function App() {
               onImportLocalKiro={importLocalKiro}
               onImportLocalCursor={importLocalCursor}
               onImportLocalGrok={importLocalGrok}
+              onImportLocalKimi={importLocalKimi}
               onOpenCopilotAuthUrl={openCopilotAuthUrl}
               onOpenCodexAuthUrl={openCodexAuthUrl}
               onOpenAntigravityAuthUrl={openAntigravityAuthUrl}
@@ -2421,6 +2539,7 @@ interface DashboardViewProps {
   cursorAccounts: CursorAccountSummary[];
   grokAccounts: GrokAccountSummary[];
   openCodeGoAccounts: OpenCodeGoAccountSummary[];
+  kimiAccounts: KimiAccountSummary[];
   copilotBusy: boolean;
   codexBusy: boolean;
   antigravityBusy: boolean;
@@ -2429,6 +2548,7 @@ interface DashboardViewProps {
   cursorBusy: boolean;
   grokBusy: boolean;
   openCodeGoBusy: boolean;
+  kimiBusy: boolean;
   copilotError: string | null;
   codexError: string | null;
   antigravityError: string | null;
@@ -2437,6 +2557,7 @@ interface DashboardViewProps {
   cursorError: string | null;
   grokError: string | null;
   openCodeGoError: string | null;
+  kimiError: string | null;
   onRefreshAllCopilot: () => void;
   onRefreshCopilotAccount: (accountId: string) => void;
   onRemoveCopilotAccount: (accountId: string) => void;
@@ -2463,6 +2584,10 @@ interface DashboardViewProps {
   onReauthenticateGrok: () => void;
   onRefreshAllOpenCodeGo: () => void;
   onRemoveOpenCodeGoAccount: (accountId: string) => void;
+  onRefreshAllKimi: () => void;
+  onRefreshKimiAccount: (accountId: string) => void;
+  onRemoveKimiAccount: (accountId: string) => void;
+  onReauthenticateKimi: () => void;
   onOpenIntegrations: () => void;
   onOpenCopilotAccounts: () => void;
   onOpenCodexAccounts: () => void;
@@ -2472,6 +2597,7 @@ interface DashboardViewProps {
   onOpenCursorAccounts: () => void;
   onOpenGrokAccounts: () => void;
   onOpenOpenCodeGoAccounts: () => void;
+  onOpenKimiAccounts: () => void;
 }
 
 function DashboardView({
@@ -2488,6 +2614,7 @@ function DashboardView({
   cursorAccounts,
   grokAccounts,
   openCodeGoAccounts,
+  kimiAccounts,
   copilotBusy,
   codexBusy,
   antigravityBusy,
@@ -2496,6 +2623,7 @@ function DashboardView({
   cursorBusy,
   grokBusy,
   openCodeGoBusy,
+  kimiBusy,
   copilotError,
   codexError,
   antigravityError,
@@ -2504,6 +2632,7 @@ function DashboardView({
   cursorError,
   grokError,
   openCodeGoError,
+  kimiError,
   onRefreshAllCopilot,
   onRefreshCopilotAccount,
   onRemoveCopilotAccount,
@@ -2530,6 +2659,10 @@ function DashboardView({
   onReauthenticateGrok,
   onRefreshAllOpenCodeGo,
   onRemoveOpenCodeGoAccount,
+  onRefreshAllKimi,
+  onRefreshKimiAccount,
+  onRemoveKimiAccount,
+  onReauthenticateKimi,
   onOpenIntegrations,
   onOpenCopilotAccounts,
   onOpenCodexAccounts,
@@ -2539,6 +2672,7 @@ function DashboardView({
   onOpenCursorAccounts,
   onOpenGrokAccounts,
   onOpenOpenCodeGoAccounts,
+  onOpenKimiAccounts,
 }: DashboardViewProps) {
   const visibleCopilotAccounts = getVisibleAccounts(copilotAccounts, pinnedAccounts);
   const visibleCodexAccounts = getVisibleAccounts(codexAccounts, pinnedAccounts);
@@ -2548,6 +2682,7 @@ function DashboardView({
   const visibleCursorAccounts = getVisibleAccounts(cursorAccounts, pinnedAccounts);
   const visibleGrokAccounts = getVisibleAccounts(grokAccounts, pinnedAccounts);
   const visibleOpenCodeGoAccounts = getVisibleAccounts(openCodeGoAccounts, pinnedAccounts);
+  const visibleKimiAccounts = getVisibleAccounts(kimiAccounts, pinnedAccounts);
   const hasAccounts =
     copilotAccounts.length > 0 ||
     codexAccounts.length > 0 ||
@@ -2556,7 +2691,8 @@ function DashboardView({
     kiroAccounts.length > 0 ||
     cursorAccounts.length > 0 ||
     grokAccounts.length > 0 ||
-    openCodeGoAccounts.length > 0;
+    openCodeGoAccounts.length > 0 ||
+    kimiAccounts.length > 0;
 
   return (
     <div className={`page-stack dashboard-view dashboard-view--${viewMode}`}>
@@ -2576,6 +2712,7 @@ function DashboardView({
                 onRefreshAllCursor();
                 onRefreshAllGrok();
                 onRefreshAllOpenCodeGo();
+                onRefreshAllKimi();
               }}
               disabled={
                 (copilotBusy || copilotAccounts.length === 0) &&
@@ -2585,7 +2722,8 @@ function DashboardView({
                 (kiroBusy || kiroAccounts.length === 0) &&
                 (cursorBusy || cursorAccounts.length === 0) &&
                 (grokBusy || grokAccounts.length === 0) &&
-                (openCodeGoBusy || openCodeGoAccounts.length === 0)
+                (openCodeGoBusy || openCodeGoAccounts.length === 0) &&
+                (kimiBusy || kimiAccounts.length === 0)
               }
             >
               <RefreshCcw size={15} />
@@ -2607,6 +2745,7 @@ function DashboardView({
       {cursorError ? <p className="account-panel__error">{cursorError}</p> : null}
       {grokError ? <p className="account-panel__error">{grokError}</p> : null}
       {openCodeGoError ? <p className="account-panel__error">{openCodeGoError}</p> : null}
+      {kimiError ? <p className="account-panel__error">{kimiError}</p> : null}
 
       <ProviderSummaryGrid
         copilotCount={copilotAccounts.length}
@@ -2617,6 +2756,7 @@ function DashboardView({
         cursorCount={cursorAccounts.length}
         grokCount={grokAccounts.length}
         openCodeGoCount={openCodeGoAccounts.length}
+        kimiCount={kimiAccounts.length}
         providerOrder={providerOrder}
         onOpenCopilotAccounts={onOpenCopilotAccounts}
         onOpenCodexAccounts={onOpenCodexAccounts}
@@ -2626,6 +2766,7 @@ function DashboardView({
         onOpenCursorAccounts={onOpenCursorAccounts}
         onOpenGrokAccounts={onOpenGrokAccounts}
         onOpenOpenCodeGoAccounts={onOpenOpenCodeGoAccounts}
+        onOpenKimiAccounts={onOpenKimiAccounts}
       />
 
       {!hasAccounts ? (
@@ -2979,6 +3120,50 @@ function DashboardView({
                     pinned={pinnedAccounts.has(account.id)}
                     dashboardMode={true}
                     onRemove={() => onRemoveOpenCodeGoAccount(account.id)}
+                    onTogglePin={() => onTogglePinnedAccount(account.id)}
+                  />
+                ))}
+              </div>
+            </section>
+          ) : null}
+
+          {kimiAccounts.length > 0 && !hiddenProviders.has('kimi') ? (
+            <section
+              className="provider-section"
+              aria-labelledby="kimi-section-title"
+              style={{ order: getProviderOrderIndex(providerOrder, 'kimi') }}
+            >
+              <div className="provider-section__header">
+                <div>
+                  <span className="provider-section__eyebrow">Connected provider</span>
+                  <h2 id="kimi-section-title">
+                    <BrandIcon src={KIMI_ICON} alt="" size="small" />
+                    Kimi Code
+                  </h2>
+                </div>
+                <div className="button-row">
+                  <button type="button" onClick={onRefreshAllKimi} disabled={kimiBusy || kimiAccounts.length === 0}>
+                    <RefreshCcw size={15} />
+                    Refresh
+                  </button>
+                  <button type="button" onClick={onOpenKimiAccounts}>
+                    <Users size={15} />
+                    View all accounts
+                  </button>
+                </div>
+              </div>
+
+              <div className="dashboard-grid">
+                {visibleKimiAccounts.map((account) => (
+                  <KimiUsageCard
+                    key={account.id}
+                    account={account}
+                    busy={kimiBusy}
+                    pinned={pinnedAccounts.has(account.id)}
+                    dashboardMode={true}
+                    onRefresh={() => onRefreshKimiAccount(account.id)}
+                    onRemove={() => onRemoveKimiAccount(account.id)}
+                    onReauthenticate={onReauthenticateKimi}
                     onTogglePin={() => onTogglePinnedAccount(account.id)}
                   />
                 ))}
@@ -3641,6 +3826,101 @@ function OpenCodeGoAccountsView({
   );
 }
 
+interface KimiAccountsViewProps {
+  viewMode: ViewMode;
+  accounts: KimiAccountSummary[];
+  busy: boolean;
+  error: string | null;
+  pinnedAccounts: Set<string>;
+  onBack: () => void;
+  onOpenIntegrations: () => void;
+  onRefreshAll: () => void;
+  onRefreshAccount: (accountId: string) => void;
+  onRemoveAccount: (accountId: string) => void;
+  onReauthenticate: () => void;
+  onTogglePinnedAccount: (accountId: string) => void;
+}
+
+function KimiAccountsView({
+  viewMode,
+  accounts,
+  busy,
+  error,
+  pinnedAccounts,
+  onBack,
+  onOpenIntegrations,
+  onRefreshAll,
+  onRefreshAccount,
+  onRemoveAccount,
+  onReauthenticate,
+  onTogglePinnedAccount,
+}: KimiAccountsViewProps) {
+  return (
+    <div className="page-stack">
+      <PageHeader
+        title="Kimi Code Accounts"
+        description="Imported local Kimi Code login with safe usage summaries."
+        action={
+          <div className="button-row">
+            <button type="button" onClick={onBack}>
+              <ArrowLeft size={15} />
+              Dashboard
+            </button>
+            <button type="button" onClick={onRefreshAll} disabled={busy || accounts.length === 0}>
+              <RefreshCcw size={15} />
+              Refresh all
+            </button>
+            <button type="button" className="button-primary" onClick={onOpenIntegrations}>
+              <Plus size={15} />
+              Add account
+            </button>
+          </div>
+        }
+      />
+
+      {error ? <p className="account-panel__error">{error}</p> : null}
+
+      <section className="account-view-toolbar" aria-label="Kimi Code account summary">
+        <div>
+          <span>Total accounts</span>
+          <strong>{accounts.length}</strong>
+        </div>
+        <div>
+          <span>Provider</span>
+          <strong>Kimi Code</strong>
+        </div>
+      </section>
+
+      {accounts.length === 0 ? (
+        <div className="empty-state empty-state--large">
+          <BrandIcon src={KIMI_ICON} alt="" size="large" />
+          <strong>No Kimi Code accounts imported.</strong>
+          <span>Import your local Kimi Code login and Quota will show its subscription windows here.</span>
+          <button type="button" className="button-primary" onClick={onOpenIntegrations}>
+            <Plus size={15} />
+            Open integrations
+          </button>
+        </div>
+      ) : (
+        <section className={`accounts-grid accounts-grid--${viewMode}`} aria-label="All Kimi Code accounts">
+          {accounts.map((account) => (
+            <KimiUsageCard
+              key={account.id}
+              account={account}
+              busy={busy}
+              pinned={pinnedAccounts.has(account.id)}
+              onRefresh={() => onRefreshAccount(account.id)}
+              onRemove={() => onRemoveAccount(account.id)}
+              onReauthenticate={onReauthenticate}
+              onTogglePin={() => onTogglePinnedAccount(account.id)}
+            />
+          ))}
+        </section>
+      )}
+    </div>
+  );
+}
+
 interface ProviderSummaryGridProps {
   copilotCount: number;
   codexCount: number;
@@ -3650,6 +3930,7 @@ interface ProviderSummaryGridProps {
   cursorCount: number;
   grokCount: number;
   openCodeGoCount: number;
+  kimiCount: number;
   providerOrder: ProviderKey[];
   onOpenCopilotAccounts: () => void;
   onOpenCodexAccounts: () => void;
@@ -3659,6 +3940,7 @@ interface ProviderSummaryGridProps {
   onOpenCursorAccounts: () => void;
   onOpenGrokAccounts: () => void;
   onOpenOpenCodeGoAccounts: () => void;
+  onOpenKimiAccounts: () => void;
 }
 
 function ProviderSummaryGrid({
@@ -3670,6 +3952,7 @@ function ProviderSummaryGrid({
   cursorCount,
   grokCount,
   openCodeGoCount,
+  kimiCount,
   providerOrder,
   onOpenCopilotAccounts,
   onOpenCodexAccounts,
@@ -3679,8 +3962,9 @@ function ProviderSummaryGrid({
   onOpenCursorAccounts,
   onOpenGrokAccounts,
   onOpenOpenCodeGoAccounts,
+  onOpenKimiAccounts,
 }: ProviderSummaryGridProps) {
-  const totalCount = copilotCount + codexCount + antigravityCount + claudeCount + kiroCount + cursorCount + grokCount + openCodeGoCount;
+  const totalCount = copilotCount + codexCount + antigravityCount + claudeCount + kiroCount + cursorCount + grokCount + openCodeGoCount + kimiCount;
   const providerSummaries = PROVIDERS.map((provider) => {
     const connected =
       provider.key === 'githubCopilot'
@@ -3697,7 +3981,9 @@ function ProviderSummaryGrid({
                   ? cursorCount
                   : provider.key === 'grok'
                     ? grokCount
-                    : openCodeGoCount;
+                    : provider.key === 'opencodeGo'
+                      ? openCodeGoCount
+                      : kimiCount;
     const openAccounts =
       provider.key === 'githubCopilot'
         ? onOpenCopilotAccounts
@@ -3713,7 +3999,9 @@ function ProviderSummaryGrid({
                   ? onOpenCursorAccounts
                   : provider.key === 'grok'
                     ? onOpenGrokAccounts
-                    : onOpenOpenCodeGoAccounts;
+                    : provider.key === 'opencodeGo'
+                      ? onOpenOpenCodeGoAccounts
+                      : onOpenKimiAccounts;
 
     return { ...provider, connected, openAccounts };
   }).sort((a, b) => getProviderOrderIndex(providerOrder, a.key) - getProviderOrderIndex(providerOrder, b.key));
@@ -3767,6 +4055,7 @@ interface IntegrationsViewProps {
   cursorBusy: boolean;
   grokBusy: boolean;
   openCodeGoBusy: boolean;
+  kimiBusy: boolean;
   copilotError: string | null;
   codexError: string | null;
   antigravityError: string | null;
@@ -3774,6 +4063,7 @@ interface IntegrationsViewProps {
   kiroError: string | null;
   cursorError: string | null;
   grokError: string | null;
+  kimiError: string | null;
   copilotLogin: GitHubCopilotOAuthStartResponse | null;
   codexLogin: CodexOAuthStartResponse | null;
   antigravityLogin: AntigravityOAuthStartResponse | null;
@@ -3795,6 +4085,7 @@ interface IntegrationsViewProps {
   onImportLocalKiro: () => void;
   onImportLocalCursor: () => void;
   onImportLocalGrok: () => void;
+  onImportLocalKimi: () => void;
   onOpenCopilotAuthUrl: () => void;
   onOpenCodexAuthUrl: () => void;
   onOpenAntigravityAuthUrl: () => void;
@@ -3819,6 +4110,7 @@ interface IntegrationsViewProps {
   onClaudeCallbackInputChange: (value: string) => void;
   onClaudeEmailHintChange: (value: string) => void;
   openCodeGoConnectedCount: number;
+  kimiConnectedCount: number;
   openCodeGoError: string | null;
   openCodeGoFormOpen: boolean;
   onStartOpenCodeGo: () => void;
@@ -3843,6 +4135,7 @@ function IntegrationsView({
   cursorBusy,
   grokBusy,
   openCodeGoBusy,
+  kimiBusy,
   copilotError,
   codexError,
   antigravityError,
@@ -3871,6 +4164,7 @@ function IntegrationsView({
   onImportLocalKiro,
   onImportLocalCursor,
   onImportLocalGrok,
+  onImportLocalKimi,
   onOpenCopilotAuthUrl,
   onOpenCodexAuthUrl,
   onOpenAntigravityAuthUrl,
@@ -3895,7 +4189,9 @@ function IntegrationsView({
   onClaudeCallbackInputChange,
   onClaudeEmailHintChange,
   openCodeGoConnectedCount,
+  kimiConnectedCount,
   openCodeGoError,
+  kimiError,
   openCodeGoFormOpen,
   onStartOpenCodeGo,
   onAddOpenCodeGo,
@@ -3917,6 +4213,7 @@ function IntegrationsView({
       {cursorError ? <p className="account-panel__error">{cursorError}</p> : null}
       {grokError ? <p className="account-panel__error">{grokError}</p> : null}
       {openCodeGoError ? <p className="account-panel__error">{openCodeGoError}</p> : null}
+      {kimiError ? <p className="account-panel__error">{kimiError}</p> : null}
 
       {copilotLogin ? (
         <div className="auth-panel">
@@ -4116,7 +4413,8 @@ function IntegrationsView({
           const isCursor = integration.name === 'Cursor';
           const isGrok = integration.name === 'Grok';
           const isOpenCodeGo = integration.name === 'OpenCode Go';
-          const copilotCount = connectedCount - codexConnectedCount - antigravityConnectedCount - claudeConnectedCount - kiroConnectedCount - cursorConnectedCount - grokConnectedCount - openCodeGoConnectedCount;
+          const isKimi = integration.name === 'Kimi Code';
+          const copilotCount = connectedCount - codexConnectedCount - antigravityConnectedCount - claudeConnectedCount - kiroConnectedCount - cursorConnectedCount - grokConnectedCount - openCodeGoConnectedCount - kimiConnectedCount;
           return (
             <article className="integration-row" key={integration.name}>
               <div className="integration-row__icon">
@@ -4142,7 +4440,9 @@ function IntegrationsView({
                                   ? `${grokConnectedCount} connected`
                                   : isOpenCodeGo
                                     ? `${openCodeGoConnectedCount} connected`
-                                    : integration.status}
+                                    : isKimi
+                                      ? `${kimiConnectedCount} imported`
+                                      : integration.status}
                   </span>
                 </div>
                 <p>{integration.description}</p>
@@ -4216,6 +4516,11 @@ function IntegrationsView({
                 <button type="button" className="button-primary" onClick={onStartOpenCodeGo} disabled={openCodeGoBusy || openCodeGoFormOpen}>
                   <KeyRound size={15} />
                   Add key
+                </button>
+              ) : isKimi ? (
+                <button type="button" className="button-primary" onClick={onImportLocalKimi} disabled={kimiBusy}>
+                  <Plus size={15} />
+                  Import local
                 </button>
               ) : (
                 <button type="button" disabled>
@@ -4680,6 +4985,94 @@ function OpenCodeGoUsageCard({ account, busy, pinned, dashboardMode = false, onR
       </div>
 
       {account.quotaQueryLastError ? <p className="usage-card__error">{account.quotaQueryLastError}</p> : null}
+    </article>
+  );
+}
+
+function kimiWindowTitle(label: string) {
+  switch (label) {
+    case '5h':
+      return '5 Hour Limit';
+    case 'Wk':
+      return 'Weekly Limit';
+    case 'Month':
+      return 'Monthly Limit';
+    case 'Code':
+      return 'Monthly Code';
+    default:
+      return label;
+  }
+}
+
+interface KimiUsageCardProps {
+  account: KimiAccountSummary;
+  busy: boolean;
+  pinned: boolean;
+  dashboardMode?: boolean;
+  onRefresh: () => void;
+  onRemove: () => void;
+  onReauthenticate: () => void;
+  onTogglePin: () => void;
+}
+
+function KimiUsageCard({ account, busy, pinned, dashboardMode = false, onRefresh, onRemove, onReauthenticate, onTogglePin }: KimiUsageCardProps) {
+  const reconnectRequired = account.quotaQueryLastError?.includes('/login') ?? false;
+
+  return (
+    <article className="usage-card">
+      <div className="usage-card__header">
+        <div>
+          <span className="usage-card__provider">
+            <BrandIcon src={KIMI_ICON} alt="" size="small" />
+            Kimi Code
+          </span>
+          <h2>{account.label}</h2>
+          <p>Local Kimi Code login</p>
+        </div>
+        <div className="button-row usage-card__actions">
+          {(!dashboardMode || pinned) ? (
+            <button
+              type="button"
+              className={pinned ? 'usage-card__pin usage-card__pin--pinned' : 'usage-card__pin'}
+              onClick={onTogglePin}
+              aria-label={pinned ? 'Unpin account from dashboard' : 'Pin account to dashboard'}
+            >
+              {pinned ? <PinOff size={14} /> : <Pin size={14} />}
+            </button>
+          ) : null}
+          <button type="button" onClick={onRemove} disabled={busy} aria-label="Remove Kimi Code account">
+            <Trash2 size={14} />
+          </button>
+        </div>
+      </div>
+
+      <div className="usage-card__rows">
+        {account.usage.windows.length === 0 ? (
+          <UsageMetric
+            label="Subscription"
+            usedPercent={null}
+            meta={[account.usage.note ?? 'No usage data yet']}
+          />
+        ) : (
+          account.usage.windows.map((window) => (
+            <AntigravityMetricRow
+              key={`${window.label}:${window.resetAt ?? ''}`}
+              label={kimiWindowTitle(window.label)}
+              window={{ remainingPercent: window.remainingPercent, resetAt: window.resetAt }}
+            />
+          ))
+        )}
+      </div>
+
+      {reconnectRequired ? (
+        <ReauthenticationAlert
+          message={account.quotaQueryLastError ?? 'Kimi Code authorization expired. Run Kimi Code or use /login to reconnect.'}
+          busy={busy}
+          onReauthenticate={onReauthenticate}
+        />
+      ) : account.quotaQueryLastError ? (
+        <p className="usage-card__error" role="alert">{account.quotaQueryLastError}</p>
+      ) : null}
     </article>
   );
 }

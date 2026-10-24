@@ -76,3 +76,55 @@ test('payloadToTracks labels an unstarted OpenCode Go rolling window', () => {
   assert.equal(tracks[0].resetLabel, 'Starts on first use');
   assert.equal(tracks[1].resetLabel, undefined);
 });
+
+test('payloadToTracks reads Kimi Code dynamic windows from the desktop export', () => {
+  const tracks = payloadToTracks({
+    providers: {
+      kimi: [
+        {
+          id: 'kimi_local',
+          label: 'Kimi Code',
+          usage: {
+            windows: [
+              { label: '5h', remainingPercent: 82, resetAt: 1790957937 },
+              { label: 'Wk', remainingPercent: 64, resetAt: 1790957938 },
+              { label: 'Month', remainingPercent: 25, resetAt: null },
+              { label: 'Code', remainingPercent: 9, resetAt: null },
+            ],
+            note: null,
+          },
+        },
+      ],
+    },
+  });
+
+  assert.equal(tracks.length, 4);
+  assert.equal(tracks[0].id, 'kimi.fiveHour');
+  assert.equal(tracks[0].providerLabel, 'Kimi Code');
+  assert.equal(tracks[0].accountLabel, 'Kimi Code');
+  assert.equal(tracks[0].percentUsed, 18);
+  assert.equal(tracks[0].percentRemaining, 82);
+  assert.equal(tracks[0].resetAt, 1790957937000);
+  assert.equal(tracks[1].id, 'kimi.weekly');
+  assert.equal(tracks[1].percentRemaining, 64);
+  assert.equal(tracks[2].id, 'kimi.monthly');
+  assert.equal(tracks[2].percentUsed, 75);
+  assert.equal(tracks[2].resetAt, null);
+  assert.equal(tracks[3].id, 'kimi.monthlyCode');
+  assert.equal(tracks[3].percentUsed, 91);
+});
+
+test('payloadToTracks skips Kimi Code windows without a percentage', () => {
+  const tracks = payloadToTracks({
+    providers: {
+      kimi: [
+        {
+          label: 'Kimi Code',
+          usage: { windows: [{ label: '5h', remainingPercent: null, resetAt: null }], note: 'No usage data' },
+        },
+      ],
+    },
+  });
+
+  assert.equal(tracks.length, 0);
+});

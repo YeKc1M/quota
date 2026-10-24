@@ -69,4 +69,12 @@ export const integrations: IntegrationSummary[] = [
     referenceHint: 'Paste a Go API key from the OpenCode console; usage from the undocumented /zen/go/v1/usage endpoint.',
     iconPath: '/brand-icons/opencode.svg',
   },
+
+  {
+    name: 'Kimi Code',
+    description: 'Kimi Code subscription usage across the 5-hour, weekly, and monthly windows.',
+    status: 'reference',
+    referenceHint: 'Imports the local Kimi Code OAuth login (~/.kimi-code/credentials/kimi-code.json); usage from api.kimi.com/coding/v1/usages.',
+    iconPath: '/brand-icons/kimi.svg',
+  },
 ];

@@ -208,6 +208,23 @@ function tracksFromOpenCodeGo(accounts) {
         });
     });
 }
+function tracksFromKimi(accounts) {
+    const windowTracks = [
+        ['kimi.fiveHour', '5h', '5h usage'],
+        ['kimi.weekly', 'Wk', 'Weekly usage'],
+        ['kimi.monthly', 'Month', 'Monthly usage'],
+        ['kimi.monthlyCode', 'Code', 'Monthly Code usage'],
+    ];
+    return accounts.flatMap((account) => {
+        const usage = isRecord(account.usage) ? account.usage : {};
+        const windows = asArray(usage.windows);
+        return windowTracks.map(([id, windowLabel, label]) => {
+            const window = windows.find((item) => asString(item.label) === windowLabel) ?? {};
+            const remainingPercent = clampPercent(asNumber(window.remainingPercent));
+            return makeTrack(id, 'kimi', account, label, remainingPercent == null ? undefined : 100 - remainingPercent, remainingPercent, normalizeTimestamp(window.resetAt) ?? null);
+        });
+    });
+}
 function payloadToTracks(payload) {
     const providers = isRecord(payload.providers) ? payload.providers : {};
     return [
@@ -218,6 +235,7 @@ function payloadToTracks(payload) {
         ...tracksFromKiro(asArray(providers.kiro)),
         ...tracksFromGrok(asArray(providers.grok)),
         ...tracksFromOpenCodeGo(asArray(providers.opencodeGo)),
+        ...tracksFromKimi(asArray(providers.kimi)),
     ].filter((track) => track.percentUsed != null || track.percentRemaining != null || track.valueLabel || track.error);
 }
 function expandHome(inputPath) {

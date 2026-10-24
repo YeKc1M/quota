@@ -24,6 +24,7 @@ const PANEL_PROVIDERS: PanelProvider[] = [
   { id: 'kiro', label: 'Kiro', command: 'Kiro' },
   { id: 'grok', label: 'Grok', command: 'Grok' },
   { id: 'opencodeGo', label: 'OpenCode Go', command: 'OpenCodeGo' },
+  { id: 'kimi', label: 'Kimi Code', command: 'Kimi' },
 ];
 
 /** Panel buttons that run `quota.<command>` and then re-render the panel. */

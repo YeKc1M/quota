@@ -11,6 +11,7 @@ exports.PROVIDER_LABELS = {
     kiro: 'Kiro',
     grok: 'Grok',
     opencodeGo: 'OpenCode Go',
+    kimi: 'Kimi Code',
 };
 exports.PROVIDER_ORDER = [
     'githubCopilot',
@@ -20,6 +21,7 @@ exports.PROVIDER_ORDER = [
     'kiro',
     'grok',
     'opencodeGo',
+    'kimi',
 ];
 exports.CANONICAL_TRACK_ORDER = [
     'githubCopilot.premium',
@@ -43,6 +45,10 @@ exports.CANONICAL_TRACK_ORDER = [
     'opencodeGo.fiveHour',
     'opencodeGo.weekly',
     'opencodeGo.monthly',
+    'kimi.fiveHour',
+    'kimi.weekly',
+    'kimi.monthly',
+    'kimi.monthlyCode',
 ];
 exports.TRACK_LABELS = {
     'githubCopilot.premium': 'Premium requests',
@@ -66,6 +72,10 @@ exports.TRACK_LABELS = {
     'opencodeGo.fiveHour': '5h usage',
     'opencodeGo.weekly': 'Weekly usage',
     'opencodeGo.monthly': 'Monthly usage',
+    'kimi.fiveHour': '5h usage',
+    'kimi.weekly': 'Weekly usage',
+    'kimi.monthly': 'Monthly usage',
+    'kimi.monthlyCode': 'Monthly Code usage',
 };
 exports.TRACK_STATUS_BAR_LABEL = {
     'githubCopilot.premium': 'Copilot:Premium',
@@ -89,5 +99,9 @@ exports.TRACK_STATUS_BAR_LABEL = {
     'opencodeGo.fiveHour': 'Go:5h',
     'opencodeGo.weekly': 'Go:Wk',
     'opencodeGo.monthly': 'Go:Mo',
+    'kimi.fiveHour': 'Kimi:5h',
+    'kimi.weekly': 'Kimi:Wk',
+    'kimi.monthly': 'Kimi:Mo',
+    'kimi.monthlyCode': 'Kimi:Code',
 };
 //# sourceMappingURL=constants.js.map

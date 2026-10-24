@@ -46,7 +46,10 @@
     "onCommand:quota.disconnectGrok",
     "onCommand:quota.connectOpenCodeGo",
     "onCommand:quota.refreshOpenCodeGo",
-    "onCommand:quota.disconnectOpenCodeGo"
+    "onCommand:quota.disconnectOpenCodeGo",
+    "onCommand:quota.connectKimi",
+    "onCommand:quota.refreshKimi",
+    "onCommand:quota.disconnectKimi"
   ],
   "contributes": {
     "commands": [
@@ -153,6 +156,18 @@
       {
         "command": "quota.disconnectOpenCodeGo",
         "title": "Quota: Disconnect OpenCode Go"
+      },
+      {
+        "command": "quota.connectKimi",
+        "title": "Quota: Connect Kimi Code"
+      },
+      {
+        "command": "quota.refreshKimi",
+        "title": "Quota: Refresh Kimi Code"
+      },
+      {
+        "command": "quota.disconnectKimi",
+        "title": "Quota: Disconnect Kimi Code"
       }
     ],
     "configuration": {
@@ -183,7 +198,8 @@
             "antigravity",
             "kiro",
             "grok",
-            "opencodeGo"
+            "opencodeGo",
+            "kimi"
           ],
           "items": {
             "type": "string",
@@ -194,7 +210,8 @@
               "antigravity",
               "kiro",
               "grok",
-              "opencodeGo"
+              "opencodeGo",
+              "kimi"
             ]
           },
           "markdownDescription": "Providers shown in the Quota panel. Cursor is intentionally excluded from the VSIX scope."
@@ -209,7 +226,7 @@
           "default": [],
           "items": {
             "type": "string",
-            "pattern": "^(githubCopilot\\.(premium|chat|inline)|codex\\.(primary|weekly)|claude\\.(fiveHour|weekly|weeklySonnet|extraUsage)|antigravity\\.(gemini|geminiWeekly|claude|claudeWeekly|credits)|kiro\\.promptCredits|grok\\.(credits|monthlySpend|onDemand)|opencodeGo\\.(fiveHour|weekly|monthly))(@.+)?$",
+            "pattern": "^(githubCopilot\\.(premium|chat|inline)|codex\\.(primary|weekly)|claude\\.(fiveHour|weekly|weeklySonnet|extraUsage)|antigravity\\.(gemini|geminiWeekly|claude|claudeWeekly|credits)|kiro\\.promptCredits|grok\\.(credits|monthlySpend|onDemand)|opencodeGo\\.(fiveHour|weekly|monthly)|kimi\\.(fiveHour|weekly|monthly|monthlyCode))(@.+)?$",
             "patternErrorMessage": "Use a track ID like codex.weekly, optionally followed by @accountId."
           },
           "markdownDescription": "Quota tracks shown directly in the status bar. Run **Quota: Choose Status Bar Items** to pick tracks per account. A bare track ID such as `codex.weekly` follows the first connected account; `codex.weekly@<accountId>` pins one account. Leave empty to show only the small Quota button."

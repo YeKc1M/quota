@@ -20,6 +20,7 @@ Currently Quota supports the following providers:
 - Cursor
 - Grok
 - OpenCode Go
+- Kimi Code
 
 Every provider saves its raw auth info in the Rust backend and only secure account & usage information are sent to the React frontend.
 
@@ -104,6 +105,15 @@ OpenCode Go doesn't have a sign-in flow for other apps, so you connect it with y
 - **VS Code:** run `Quota: Connect OpenCode Go` and paste the key when it asks.
 
 Quota checks the key before saving it, then shows your 5-hour, weekly, and monthly usage as percentages, the same numbers the OpenCode console shows. Usage comes from an endpoint OpenCode doesn't document yet, so if they change it, this provider might need a quick update. `quota-cli` doesn't support OpenCode Go yet.
+
+## Kimi Code
+
+Kimi Code keeps its OAuth login in `~/.kimi-code/credentials/kimi-code.json` (or `$KIMI_CODE_HOME/credentials/kimi-code.json`), and Quota reads that local session instead of running its own sign-in:
+
+- **Desktop:** open Integrations, click **Import local** on the Kimi Code row. Re-run it any time to reconnect after your Kimi Code login refreshes.
+- **VS Code:** run `Quota: Connect Kimi Code`.
+
+Quota fetches your 5-hour, weekly, monthly, and monthly Code windows from `api.kimi.com/coding/v1/usages` before saving anything, and re-reads the local credentials on every refresh. The access token never leaves Kimi Code's own credential file — Quota's account cache holds only safe account metadata and usage numbers. If the stored session is missing, expired, or rejected, Quota says so and points you at running Kimi Code or `/login` instead; it never tries to refresh the token itself.
 
 ## Quota CLI
 
