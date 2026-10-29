@@ -4,13 +4,21 @@ All notable changes to this project will be documented here.
 
 ## Unreleased
 
-### 🐛 Fixes
-
-- The desktop app and the VS Code extension also send the Antigravity CLI user agent on the quota summary call, so their Gemini `5h` and `Wk` windows come back too. This ships with their next releases. ([#17](https://github.com/pinkpixel-dev/quota/issues/17))
-
 ### 🌐 Website
 
 - Added `website/`, a homepage and docs site built with Astro and Starlight. It covers the desktop app, the VS Code extension, `quota-cli`, and the Herdr plugin, with screenshots, install steps, and direct download links for each release.
+
+## 1.7.1 and quota-vscode 1.5.2 - October 29, 2026
+
+Brings the Antigravity Gemini fix from `quota-cli` 0.2.4 to the desktop app and the VS Code extension.
+
+### 🐛 Fixes
+
+- Antigravity Gemini `5h` and `Wk` windows show up again in the desktop app and the VS Code extension. Google now only includes the Gemini group in `retrieveUserQuotaSummary` when the User-Agent looks like the Antigravity CLI, so both showed Claude/GPT numbers and nothing for Gemini. The quota call now sends `antigravity/cli/1.4.10 <os>/<arch>`, and the other Code Assist calls keep their old UA. ([#17](https://github.com/pinkpixel-dev/quota/issues/17))
+
+### 🏷️ Versioning
+
+- Bumped the desktop app to `1.7.1` and the extension to `1.5.2`. `quota-cli` stays at `0.2.4`.
 
 ## quota-cli 0.2.4 - October 29, 2026
 

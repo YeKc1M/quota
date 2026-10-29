@@ -4,7 +4,7 @@ export const repo = 'https://github.com/pinkpixel-dev/quota';
 export const releasesUrl = `${repo}/releases`;
 
 export const desktop = {
-  version: '1.7.0',
+  version: '1.7.1',
   get tag() {
     return `v${this.version}`;
   },
@@ -52,9 +52,9 @@ export const desktopDownloads = [
 ];
 
 export const vscode = {
-  version: '1.4.0',
+  version: '1.5.2',
   // The .vsix is attached to whichever GitHub release shipped it.
-  releaseTag: 'v1.7.0',
+  releaseTag: 'v1.7.1',
   marketplace: 'https://marketplace.visualstudio.com/items?itemName=pinkpixel.quota-ai-usage-tracker',
   openVsx: 'https://open-vsx.org/extension/pinkpixel/quota-ai-usage-tracker',
   get vsix() {
