@@ -6,12 +6,24 @@ All notable changes to this project will be documented here.
 
 ### 🐛 Fixes
 
-- Antigravity Gemini `5h` and `Wk` windows show up again. Google now only includes the Gemini group in `retrieveUserQuotaSummary` when the User-Agent looks like the Antigravity CLI, so every client got Claude/GPT numbers back and nothing for Gemini, on every platform. The quota call now sends `antigravity/cli/1.4.10 <os>/<arch>`, and the other Code Assist calls keep their old UA. Fixed in `quota-core` (so `quota-cli` and Herdr), the desktop app, and the VS Code extension. ([#17](https://github.com/pinkpixel-dev/quota/issues/17))
-- Antigravity works on macOS without keychain prompts. `quota-core` now reads the Antigravity CLI's token file (`~/.gemini/antigravity-cli/antigravity-oauth-token`) and decodes the `go-keyring-base64:` wrapper macOS puts around it. The file is used first while its token is still good. Once it expires, the keyring wins, since newer `agy` builds on Linux keep the live token there and leave the file behind. Thanks to @ernestas-poskus. ([#19](https://github.com/pinkpixel-dev/quota/pull/19))
+- The desktop app and the VS Code extension also send the Antigravity CLI user agent on the quota summary call, so their Gemini `5h` and `Wk` windows come back too. This ships with their next releases. ([#17](https://github.com/pinkpixel-dev/quota/issues/17))
 
 ### 🌐 Website
 
 - Added `website/`, a homepage and docs site built with Astro and Starlight. It covers the desktop app, the VS Code extension, `quota-cli`, and the Herdr plugin, with screenshots, install steps, and direct download links for each release.
+
+## quota-cli 0.2.4 - October 29, 2026
+
+Brings back the Antigravity Gemini windows and makes Antigravity work on macOS.
+
+### 🐛 Fixes
+
+- Antigravity Gemini `5h` and `Wk` windows show up again. Google now only includes the Gemini group in `retrieveUserQuotaSummary` when the User-Agent looks like the Antigravity CLI, so `quota-cli` got Claude/GPT numbers back and nothing for Gemini, on every platform. The quota call now sends `antigravity/cli/1.4.10 <os>/<arch>`, and the other Code Assist calls keep their old UA. This also fixes the Herdr sidebar. ([#17](https://github.com/pinkpixel-dev/quota/issues/17))
+- Antigravity works on macOS without keychain prompts. `quota-core` now reads the Antigravity CLI's token file (`~/.gemini/antigravity-cli/antigravity-oauth-token`) and decodes the `go-keyring-base64:` wrapper macOS puts around it. The file is used first while its token is still good. Once it expires, the keyring wins, since newer `agy` builds on Linux keep the live token there and leave the file behind. Thanks to @ernestas-poskus. ([#19](https://github.com/pinkpixel-dev/quota/pull/19))
+
+### 🏷️ Versioning
+
+- Bumped `quota-cli` to `0.2.4` and `quota-core` to `0.1.3`. The desktop app and the VS Code extension keep their current versions for now.
 
 ## quota-cli 0.2.3 - October 19, 2026
 
