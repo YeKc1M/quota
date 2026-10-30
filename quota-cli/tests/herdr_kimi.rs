@@ -42,6 +42,18 @@ exit 1
         }
     }
 
+    /// Seed an expired local credential file so a fetch fails on the file
+    /// alone, without consulting the real OS keyring or the network.
+    fn seed_expired_credentials(&self) {
+        let credentials = self.dir.join("kimi-home/credentials");
+        std::fs::create_dir_all(&credentials).unwrap();
+        std::fs::write(
+            credentials.join("kimi-code.json"),
+            r#"{"access_token":"expired-secret","refresh_token":"refresh-secret","expires_at":1}"#,
+        )
+        .unwrap();
+    }
+
     fn seed(&self, provider: &str, token: &str, age: i64) {
         write_cache(
             &self.dir.join("state"),
@@ -157,13 +169,14 @@ fn stale_or_forced_cache_fetches_kimi_once_then_falls_back_on_credential_failure
             ]),
         );
         fixture.seed("kimi", "5h 82% · Wk 64%", age);
+        // An expired local credential file fails on its own, so the fetch
+        // never falls through to the OS keyring or the network.
+        fixture.seed_expired_credentials();
         let output = fixture.run(force);
         assert!(output.status.success());
         let stderr = String::from_utf8_lossy(&output.stderr);
         assert_eq!(
-            stderr
-                .matches("No Kimi Code OAuth credentials found")
-                .count(),
+            stderr.matches("stored token has expired").count(),
             1,
             "{}",
             stderr

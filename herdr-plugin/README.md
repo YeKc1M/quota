@@ -142,7 +142,7 @@ Antigravity is the one exception, and a narrow one. Google doesn't rotate its re
 
 One thing worth knowing: several of these tools keep separate credentials for their CLI and their IDE, and the two can be different accounts. Cursor, Kiro, and Antigravity all do this. The plugin always reads the CLI's store, since that's the thing actually running in your pane.
 
-Kimi Code requires an OAuth login through `/login`. Its credentials are read from `~/.kimi-code/credentials/kimi-code.json`, or `$KIMI_CODE_HOME/credentials/kimi-code.json` when that directory override is set. Quota reads the access token without refreshing or changing it. If it has expired or is rejected, run Kimi Code to refresh it, or use `/login`. This provider supports the current Kimi Code CLI and its default service; legacy `~/.kimi` credentials, API key logins, and custom service addresses are not supported.
+Kimi Code requires an OAuth login through `/login`. Its credentials are read from `~/.kimi-code/credentials/kimi-code.json`, or `$KIMI_CODE_HOME/credentials/kimi-code.json` when that directory override is set. Only when that file is missing (or no home directory can be resolved) does Quota fall back to the OS keyring entry `kimi-code` / `oauth/kimi-code`. An unreadable, malformed, or expired file is reported as-is and never falls back. Quota reads the access token without refreshing or changing it, and never writes to the keyring. If it has expired or is rejected, run Kimi Code to refresh it, or use `/login`. This provider supports the current Kimi Code CLI and its default service; legacy `~/.kimi` credentials, API key logins, and custom service addresses are not supported.
 
 ## When the sidebar shows nothing
 

@@ -140,7 +140,7 @@ See [`quota-cli/README.md`](quota-cli/README.md) for the full command reference 
 
 If you use Herdr, `herdr-plugin/` shows your AI usage right in the sidebar, next to the panes and workspaces where you're using it. Each pane shows the numbers for the agent it's actually running, so a Claude pane and a Codex pane each show their own.
 
-Kimi Code panes are supported through their local OAuth login, with remaining subscription quota such as `5h 82% · Wk 64%`. The CLI also reports available monthly windows. Credentials come from `~/.kimi-code/credentials/kimi-code.json`, honoring `KIMI_CODE_HOME`.
+Kimi Code panes are supported through their local OAuth login, with remaining subscription quota such as `5h 82% · Wk 64%`. The CLI also reports available monthly windows. Credentials come from `~/.kimi-code/credentials/kimi-code.json`, honoring `KIMI_CODE_HOME`; only when that file is missing does it read the `kimi-code` / `oauth/kimi-code` entry from the OS keyring.
 
 The plugin is a thin wrapper around `quota-cli`, so install that first, then:
 

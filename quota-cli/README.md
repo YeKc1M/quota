@@ -68,11 +68,11 @@ A failed cycle is not fatal. If Herdr is not running, or a provider is signed ou
 | Antigravity | OS keyring, falling back to `~/.gemini/oauth_creds.json` |
 | Grok | `~/.grok/auth.json`, honoring `GROK_HOME` |
 | Kiro | `~/.local/share/kiro-cli/data.sqlite3`, falling back to the AWS SSO cache |
-| Kimi Code | `~/.kimi-code/credentials/kimi-code.json`, honoring `KIMI_CODE_HOME` |
+| Kimi Code | `~/.kimi-code/credentials/kimi-code.json`, honoring `KIMI_CODE_HOME`, falling back to the OS keyring when the file is missing |
 
 Three of these are worth knowing about. Cursor, Kiro, and Antigravity keep separate credentials for their CLI and their IDE, and the two stores can hold different accounts or lapse independently. `quota-cli` reads the CLI store first, because that is the session an agent in a terminal actually uses.
 
-Kimi Code uses the OAuth credentials saved by `/login`. If the token expires or is rejected, run Kimi Code to refresh it, or use `/login` again. The provider reads the default Kimi Code service and does not fall back to legacy `~/.kimi` credentials, API keys, or custom service addresses. It reports available 5-hour (`5h`), weekly (`Wk`), monthly total (`Month`), and monthly coding (`Code`) windows in that order. Herdr shows the first two available windows; `usage` and `usage --json` include them all. An account with no valid windows reports `No usage data`.
+Kimi Code uses the OAuth credentials saved by `/login`. If the credential file is missing (or no home directory can be resolved), the provider falls back to the OS keyring entry `kimi-code` / `oauth/kimi-code`. An unreadable, malformed, or expired file is reported as-is and never falls back. The keyring is only read, never written. If the token expires or is rejected, run Kimi Code to refresh it, or use `/login` again. The provider reads the default Kimi Code service and does not fall back to legacy `~/.kimi` credentials, API keys, or custom service addresses. It reports available 5-hour (`5h`), weekly (`Wk`), monthly total (`Month`), and monthly coding (`Code`) windows in that order. Herdr shows the first two available windows; `usage` and `usage --json` include them all. An account with no valid windows reports `No usage data`.
 
 ## What it does not do
 

@@ -19,7 +19,7 @@ for (provider, result) in reports {
 
 `fetch_provider(name)` does one provider and returns `None` for a name that has no reader, which lets a caller tell "unknown provider" apart from "provider failed".
 
-The Kimi provider reads OAuth credentials from `~/.kimi-code/credentials/kimi-code.json`, honoring `KIMI_CODE_HOME`. It fetches the default Kimi Code `/usages` endpoint and normalizes `used_ratio` into remaining percentages for `5h`, `Wk`, `Month`, and `Code`, preserving available reset times. Missing or invalid windows are skipped; no valid windows produces a `No usage data` note. Expired or rejected tokens must be renewed by Kimi Code. Legacy `~/.kimi` credentials, API keys, and custom service addresses are outside this provider's scope.
+The Kimi provider reads OAuth credentials from `~/.kimi-code/credentials/kimi-code.json`, honoring `KIMI_CODE_HOME`. Only a missing file (or no resolvable home) falls back to the OS keyring entry `kimi-code` / `oauth/kimi-code` that Python's `keyring` writes; on Windows the reader looks up the Credential Manager targets `kimi-code` then `oauth/kimi-code@kimi-code` and verifies the stored username. An unreadable, malformed, or expired file returns its own error without consulting the keyring, and the keyring is never written to. It fetches the default Kimi Code `/usages` endpoint and normalizes `used_ratio` into remaining percentages for `5h`, `Wk`, `Month`, and `Code`, preserving available reset times. Missing or invalid windows are skipped; no valid windows produces a `No usage data` note. Expired or rejected tokens must be renewed by Kimi Code. Legacy `~/.kimi` credentials, API keys, and custom service addresses are outside this provider's scope.
 
 ## Things worth knowing before you depend on this
 
